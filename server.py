@@ -1,9 +1,9 @@
 import sys
 import os
-from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-# Add current folder to path dynamically
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from api.key_manager import SarvKeyManager
@@ -19,14 +19,15 @@ app = FastAPI(
 key_mgr = SarvKeyManager()
 router = SarvAPIRouter()
 
+# Enables Swagger UI's "Authorize" lock button natively
+security_scheme = HTTPBearer()
+
 class CommandRequest(BaseModel):
     command: str
 
-def verify_sarv_key(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Authorization header missing.")
-    
-    token = authorization.replace("Bearer ", "").strip()
+def verify_sarv_key(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)):
+    # Automatically extracts token after "Bearer "
+    token = credentials.credentials
     is_valid, msg = key_mgr.validate_api_key(token)
     
     if not is_valid:
