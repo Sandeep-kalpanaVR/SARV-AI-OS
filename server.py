@@ -18,21 +18,19 @@ app = FastAPI(
 
 key_mgr = SarvKeyManager()
 router = SarvAPIRouter()
-
-# Enables Swagger UI's "Authorize" lock button natively
 security_scheme = HTTPBearer()
 
 class CommandRequest(BaseModel):
     command: str
 
+class KeyGenRequest(BaseModel):
+    client_name: str
+
 def verify_sarv_key(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)):
-    # Automatically extracts token after "Bearer "
     token = credentials.credentials
     is_valid, msg = key_mgr.validate_api_key(token)
-    
     if not is_valid:
         raise HTTPException(status_code=401, detail=msg)
-    
     return token
 
 @app.get("/")
@@ -42,6 +40,17 @@ def root():
         "system": APP_NAME,
         "version": VERSION,
         "message": "SARV AI OS Web Server is active."
+    }
+
+@app.post("/v1/keys/generate")
+def create_key(req: KeyGenRequest):
+    """
+    Public endpoint to generate a fresh SARV API Key on the cloud server.
+    """
+    key_info = key_mgr.generate_api_key(client_name=req.client_name, key_type="live")
+    return {
+        "status": "success",
+        "key_details": key_info
     }
 
 @app.post("/v1/execute")
