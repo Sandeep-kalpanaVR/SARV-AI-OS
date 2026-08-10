@@ -9,25 +9,27 @@ class SarvAPIRouter:
         self.intent_parser = SarvIntentParser()
 
     def process_request(self, api_key: str, command: str) -> str:
-        command_lower = command.lower().strip()
+        cmd = command.lower().strip()
 
-        # Custom System Response for Introductions
-        if "introduce yourself" in command_lower or "who are you" in command_lower:
-            return (
-                "Greetings. I am SARV AI OS—a sovereign, hybrid-ready AI Operating System "
-                "designed for modular desktop execution, cloud routing, and local hardware control."
-            )
-
-        # Custom System Response for Capabilities
-        if "what can you do" in command_lower or "capabilities" in command_lower:
+        # Direct Conversational / Capability Triggers
+        if "what can you do" in cmd or "capabilities" in cmd or "features" in cmd:
             return (
                 "SARV AI OS Capabilities:\n"
-                "1. Sovereign API Gateway & OpenAI-compatible endpoints\n"
-                "2. Rule-based intent parsing & local JSON schema generation\n"
-                "3. Desktop OS application launching & diagnostic checks\n"
-                "4. Offline fallback execution when network connectivity drops"
+                "• Unified API Gateway & Key Management\n"
+                "• Rule-based intent parsing & execution schema\n"
+                "• Desktop application launching & diagnostic checks\n"
+                "• Local offline fallback processing"
             )
 
-        # Standard Intent Engine Processing
+        if "who are you" in cmd or "introduce yourself" in cmd:
+            return (
+                "I am SARV AI OS—a sovereign, hybrid-ready AI Operating System "
+                "built for modular cloud routing, desktop execution, and controller hardware integration."
+            )
+
+        # Rule-based intent parser fallback
         parsed = self.intent_parser.parse_command(command)
-        return parsed.get("speech_response", f"SARV AI OS [Local Core]: Executed command -> '{command}'")
+        if parsed.get("actions"):
+            return f"Executing {len(parsed['actions'])} action(s): {parsed['speech_response']}"
+        
+        return parsed.get("speech_response", f"SARV AI OS: Processed '{command}'")

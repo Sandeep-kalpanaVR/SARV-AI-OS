@@ -210,14 +210,13 @@ SARV_HTML_CONSOLE = """<!DOCTYPE html>
 
 # API Routes
 @app.get("/", response_class=HTMLResponse)
-def get_root():
-    return HTMLResponse(content=SARV_HTML_CONSOLE)
-
 @app.get("/ui", response_class=HTMLResponse)
+@app.get("/ui/", response_class=HTMLResponse)
 def get_ui():
     return HTMLResponse(content=SARV_HTML_CONSOLE)
 
 @app.get("/health")
+@app.get("/health/")
 def health_check():
     return {"status": "ok", "app": APP_NAME, "version": VERSION}
 
