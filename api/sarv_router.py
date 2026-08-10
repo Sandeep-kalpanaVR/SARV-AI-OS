@@ -1,21 +1,33 @@
+import sys
 import os
-from api.key_manager import SarvKeyManager
-from config.settings import OFFLINE_MODE
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from modules.intent_engine import SarvIntentParser
 
 class SarvAPIRouter:
     def __init__(self):
-        self.key_manager = SarvKeyManager()
+        self.intent_parser = SarvIntentParser()
 
     def process_request(self, api_key: str, command: str) -> str:
-        # 1. Authenticate SARV API Key
-        is_valid, msg = self.key_manager.validate_api_key(api_key)
-        if not is_valid:
-            return f"[SARV AUTH ERROR 401] {msg}"
+        command_lower = command.lower().strip()
 
-        # 2. SARV Native Processing Logic
-        if not OFFLINE_MODE:
-            # Process via SARV Central Engine
-            return f"SARV AI OS [Cloud Core]: Successfully processed command -> '{command}'"
-        else:
-            # Fallback to SARV Local Engine
-            return f"SARV AI OS [Local Core]: Executed command offline -> '{command}'"
+        # Custom System Response for Introductions
+        if "introduce yourself" in command_lower or "who are you" in command_lower:
+            return (
+                "Greetings. I am SARV AI OS—a sovereign, hybrid-ready AI Operating System "
+                "designed for modular desktop execution, cloud routing, and local hardware control."
+            )
+
+        # Custom System Response for Capabilities
+        if "what can you do" in command_lower or "capabilities" in command_lower:
+            return (
+                "SARV AI OS Capabilities:\n"
+                "1. Sovereign API Gateway & OpenAI-compatible endpoints\n"
+                "2. Rule-based intent parsing & local JSON schema generation\n"
+                "3. Desktop OS application launching & diagnostic checks\n"
+                "4. Offline fallback execution when network connectivity drops"
+            )
+
+        # Standard Intent Engine Processing
+        parsed = self.intent_parser.parse_command(command)
+        return parsed.get("speech_response", f"SARV AI OS [Local Core]: Executed command -> '{command}'")
