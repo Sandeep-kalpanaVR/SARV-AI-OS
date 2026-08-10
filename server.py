@@ -1,8 +1,13 @@
 import sys
 import os
-from fastapi import FastAPI, HTTPException, Depends
+import time
+from collections import defaultdict
+from typing import List, Optional, Dict, Any
+
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -11,31 +16,62 @@ from api.key_manager import SarvKeyManager
 from api.sarv_router import SarvAPIRouter
 from config.settings import APP_NAME, VERSION
 
+# Initialize App and Core Services
 app = FastAPI(
     title=APP_NAME,
     version=VERSION,
-    description="SARV AI OS Central Cloud & Offline API Router"
+    description="SARV AI OS Sovereign Cloud Gateway & Public API Engine"
+)
+
+# Enable CORS for public websites, extensions, and mobile apps
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 key_mgr = SarvKeyManager()
 router = SarvAPIRouter()
 security_scheme = HTTPBearer()
 
-class CommandRequest(BaseModel):
-    command: str
+# In-Memory Rate Limiter Tracking
+request_history = defaultdict(list)
 
-class KeyGenRequest(BaseModel):
-    client_name: str
+def enforce_rate_limit(api_key: str, max_requests: int = 30, window_seconds: int = 60):
+    now = time.time()
+    request_history[api_key] = [t for t in request_history[api_key] if now - t < window_seconds]
+    if len(request_history[api_key]) >= max_requests:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 30 requests per minute.")
+    request_history[api_key].append(now)
 
 def verify_sarv_key(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)):
     token = credentials.credentials
     is_valid, msg = key_mgr.validate_api_key(token)
     if not is_valid:
         raise HTTPException(status_code=401, detail=msg)
+    enforce_rate_limit(token)
     return token
 
-SARV_HTML_CONSOLE = """
-<!DOCTYPE html>
+# Pydantic Request Models
+class CommandRequest(BaseModel):
+    command: str
+
+class KeyGenRequest(BaseModel):
+    client_name: str
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatCompletionRequest(BaseModel):
+    model: Optional[str] = "sarv-ai-os"
+    messages: List[ChatMessage]
+    stream: Optional[bool] = False
+
+# HTML Dashboard Interface
+SARV_HTML_CONSOLE = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -74,7 +110,7 @@ SARV_HTML_CONSOLE = """
         <div class="header">
             <div>
                 <h1>SARV AI OS</h1>
-                <p style="color: var(--text-dim); font-size: 12px; margin-top: 4px;">Central Cloud Router & Sovereign Engine</p>
+                <p style="color: var(--text-dim); font-size: 12px; margin-top: 4px;">Public Cloud Gateway & Sovereign API Engine</p>
             </div>
             <div class="badge">SYSTEM ONLINE</div>
         </div>
@@ -98,7 +134,7 @@ SARV_HTML_CONSOLE = """
                 <button onclick="executeCommand()">Send Command</button>
             </div>
             <h2>Terminal Output</h2>
-            <div class="terminal" id="terminal">[SARV OS READY] System initialized. Enter your API Key and send a command...</div>
+            <div class="terminal" id="terminal">[SARV OS READY] Public Gateway active. Enter API Key and send command...</div>
         </div>
     </div>
 
@@ -170,16 +206,20 @@ SARV_HTML_CONSOLE = """
         }
     </script>
 </body>
-</html>
-"""
+</html>"""
 
-@app.get("/")
-def get_root_ui():
-    return HTMLResponse(content=SARV_HTML_CONSOLE, status_code=200)
+# API Routes
+@app.get("/", response_class=HTMLResponse)
+def get_root():
+    return HTMLResponse(content=SARV_HTML_CONSOLE)
 
-@app.get("/ui")
-def get_dashboard_ui():
-    return HTMLResponse(content=SARV_HTML_CONSOLE, status_code=200)
+@app.get("/ui", response_class=HTMLResponse)
+def get_ui():
+    return HTMLResponse(content=SARV_HTML_CONSOLE)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "app": APP_NAME, "version": VERSION}
 
 @app.post("/v1/keys/generate")
 def create_key(req: KeyGenRequest):
@@ -196,4 +236,32 @@ def execute_command(req: CommandRequest, api_key: str = Depends(verify_sarv_key)
         "status": "success",
         "command": req.command,
         "result": response
+    }
+
+# Public OpenAI-Compatible Endpoint for Apps & Web Services
+@app.post("/v1/chat/completions")
+def chat_completions(req: ChatCompletionRequest, api_key: str = Depends(verify_sarv_key)):
+    user_prompt = req.messages[-1].content if req.messages else ""
+    sarv_response = router.process_request(api_key=api_key, command=user_prompt)
+    
+    return {
+        "id": f"chatcmpl-sarv-{int(time.time())}",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": "sarv-ai-os",
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": sarv_response
+                },
+                "finish_reason": "stop"
+            }
+        ],
+        "usage": {
+            "prompt_tokens": len(user_prompt),
+            "completion_tokens": len(sarv_response),
+            "total_tokens": len(user_prompt) + len(sarv_response)
+        }
     }
