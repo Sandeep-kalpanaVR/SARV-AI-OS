@@ -9,28 +9,30 @@ class SarvAPIRouter:
         self.intent_parser = SarvIntentParser()
 
     def process_request(self, api_key: str, command: str) -> str:
-        # Normalize command string for matching
+        # Clean and normalize the command string
         cmd = command.lower().strip().rstrip("?.!")
 
-        # Direct Conversational / Capability Triggers
-        if "what can you do" in cmd or "capabilities" in cmd or "features" in cmd:
+        # 1. Broad matching for capability questions
+        if any(phrase in cmd for phrase in ["what can you do", "capabilities", "features", "help", "commands"]):
             return (
                 "SARV AI OS Capabilities:\n"
-                "• Unified Sovereign API Gateway & Key Management\n"
-                "• Rule-based intent parsing & local execution schema\n"
-                "• Desktop application launching & diagnostic checks\n"
+                "• Sovereign API Gateway & Key Management\n"
+                "• Rule-based intent parsing & execution schema\n"
+                "• Desktop application launching & system diagnostics\n"
                 "• Local offline fallback & hybrid cloud routing"
             )
 
-        if "who are you" in cmd or "introduce yourself" in cmd or "introduction" in cmd:
+        # 2. Broad matching for introduction questions
+        if any(phrase in cmd for phrase in ["who are you", "introduce yourself", "introduction", "what is sarv"]):
             return (
                 "I am SARV AI OS—a sovereign, hybrid-ready AI Operating System "
                 "built for modular cloud routing, desktop execution, and controller hardware integration."
             )
 
-        # Rule-based intent parser fallback
+        # 3. Fallback to local intent parser module
         parsed = self.intent_parser.parse_command(command)
         if parsed.get("actions") and len(parsed["actions"]) > 0:
             return f"Executing {len(parsed['actions'])} action(s): {parsed['speech_response']}"
         
-        return parsed.get("speech_response", f"SARV AI OS [Local Core]: Executed command -> '{command}'")
+        # 4. Default conversational response instead of echo
+        return f"SARV AI OS processed request: '{command}'"
