@@ -34,5 +34,5 @@ class SarvAPIRouter:
         if parsed.get("actions") and len(parsed["actions"]) > 0:
             return f"Executing {len(parsed['actions'])} action(s): {parsed['speech_response']}"
         
-        # 4. Default conversational response instead of echo
+        # 4. Default clean conversational response
         return f"SARV AI OS processed request: '{command}'"
