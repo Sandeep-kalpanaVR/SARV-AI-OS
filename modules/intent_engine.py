@@ -41,7 +41,19 @@ class SarvIntentParser:
                 )
             }
 
-        # 3. Application Launch Commands
+        # 3. Creator / Origin Queries
+        if any(w in cmd_clean for w in ["who made you", "who created you", "who is your creator", "developer"]):
+            return {
+                "request_id": f"req_{uuid.uuid4().hex[:8]}",
+                "intent": "CREATOR_QUERY",
+                "actions": [],
+                "speech_response": (
+                    "I was designed and developed by Sandeep as a sovereign, "
+                    "modular AI Operating System and intelligent desktop controller."
+                )
+            }
+
+        # 4. Application Launch Commands
         if "open" in cmd_clean or "launch" in cmd_clean:
             apps = ["vs code", "chrome", "thonny", "terminal", "notepad"]
             for app in apps:
@@ -54,7 +66,7 @@ class SarvIntentParser:
                     })
                     step += 1
 
-        # 4. System / Router Diagnostics
+        # 5. System / Router Diagnostics
         if any(w in cmd_clean for w in ["check", "status", "diagnostic", "health", "ping"]):
             actions.append({
                 "step": step,
